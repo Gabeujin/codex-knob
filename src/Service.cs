@@ -10,7 +10,7 @@ namespace CodexKnob
 {
     public static class Service
     {
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string RunName = "CodexKnob";
         public static string InstallPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "CodexKnob", Version, "CodexKnob.exe"); } }
@@ -40,10 +40,22 @@ namespace CodexKnob
             if (File.ReadAllText(path, new UTF8Encoding(false, true)) != code) throw new IOException("설정 반영 검증에 실패했습니다.");
         }
         internal static string StartupCommand { get { return QuoteCommand(InstallPath); } }
-        public static bool IsInstalled { get { return File.Exists(InstallPath); } }
-        public static bool StartupEnabled
+        private static string PreviousStartupCommand
         {
-            get { using (var key = Registry.CurrentUser.OpenSubKey(RunKey)) return key != null && String.Equals(key.GetValue(RunName) as string, StartupCommand, StringComparison.Ordinal); }
+            get { return QuoteCommand(Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(InstallPath)), "1.1.0", "CodexKnob.exe")); }
+        }
+        private static bool IsOwnedStartup(string command)
+        {
+            return command == StartupCommand || command == PreviousStartupCommand;
+        }
+        public static bool IsInstalled { get { return File.Exists(InstallPath); } }
+        internal static bool StartupNeedsUpgrade { get { return ReadStartupCommand() == PreviousStartupCommand; } }
+        public static bool StartupEnabled { get { return IsOwnedStartup(ReadStartupCommand()); } }
+
+        private static string ReadStartupCommand()
+        {
+            using (var key = Registry.CurrentUser.OpenSubKey(RunKey))
+                return key == null ? null : key.GetValue(RunName) as string;
         }
         internal static string QuoteCommand(string path)
         {
@@ -56,6 +68,12 @@ namespace CodexKnob
         internal static string Hash(string path)
         { using (var hash = SHA256.Create()) using (var file = File.OpenRead(path)) return BitConverter.ToString(hash.ComputeHash(file)).Replace("-", ""); }
         public static void Install()
+        {
+            CopyExecutable();
+            if (StartupNeedsUpgrade) SetStartup(true);
+        }
+
+        private static void CopyExecutable()
         {
             string source = Application.ExecutablePath;
             string target = InstallPath;
@@ -71,13 +89,13 @@ namespace CodexKnob
         }
         public static void SetStartup(bool enable)
         {
-            if (enable) Install();
+            if (enable) CopyExecutable();
             using (var key = Registry.CurrentUser.CreateSubKey(RunKey))
             {
                 object stored = key.GetValue(RunName);
                 string current = stored as string;
                 // 다른 프로그램이 같은 이름을 쓴 경우 등록과 해제를 모두 중단
-                if (stored != null && current != StartupCommand) throw new IOException("같은 이름의 다른 자동 시작 항목이 있어 변경하지 않았습니다.");
+                if (stored != null && !IsOwnedStartup(current)) throw new IOException("같은 이름의 다른 자동 시작 항목이 있어 변경하지 않았습니다.");
                 if (enable && current == StartupCommand || !enable && current == null) return;
                 BackupRegistry(current);
                 if (enable) key.SetValue(RunName, StartupCommand, RegistryValueKind.String);
@@ -100,9 +118,20 @@ namespace CodexKnob
         }
         public static void SaveMapping(Mapping mapping)
         {
+            SaveMapping(mapping, SettingsPath);
+        }
+
+        internal static void SaveMapping(Mapping mapping, string path)
+        {
             if (mapping == null || !mapping.Valid) throw new ArgumentException("등록할 수 없는 신호 설정입니다.");
-            string json = new JavaScriptSerializer().Serialize(new { Version = 1, Up = new { mapping.Up.Kind, mapping.Up.Code }, Down = new { mapping.Down.Kind, mapping.Down.Code } });
-            string path = SettingsPath;
+            string json = new JavaScriptSerializer().Serialize(new
+            {
+                mapping.Version,
+                Up = new { mapping.Up.Kind, mapping.Up.Code },
+                Down = new { mapping.Down.Kind, mapping.Down.Code },
+                mapping.UpOutput,
+                mapping.DownOutput
+            });
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             // 설정은 임시 파일을 검증한 뒤 교체하고 기존 내용은 별도 백업에 보존
             string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";

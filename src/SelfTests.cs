@@ -13,6 +13,7 @@ namespace CodexKnob
             checks = 0;
             CheckLearnableKeys();
             CheckMappings();
+            CheckOutputKeys();
             CheckRouting();
             CheckPaths();
             CheckKeySequences();
@@ -44,9 +45,8 @@ namespace CodexKnob
             var allowed = new HashSet<int>();
             foreach (int key in new[] { 33, 34, 35, 36, 37, 38, 39, 40,
                 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
-                124, 125, 126, 127, 128, 129, 130, 131, 132, 133,
+                124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135,
                 173, 174, 175, 176, 177, 178, 179 }) allowed.Add(key);
-            // 문자·숫자·보조 키와 출력용 F23/F24를 포함해 허용 목록 밖의 모든 VK 거부 확인
             for (int key = 0; key < 256; key++)
                 Check(Policy.LearnableKey(key) == allowed.Contains(key), "learnable VK " + key);
             Check(!Policy.LearnableKey(-1) && !Policy.LearnableKey(256), "out-of-range VK rejected");
@@ -74,9 +74,27 @@ namespace CodexKnob
                 "{\"Version\":1,\"Up\":{\"Kind\":\"key\",\"Code\":65},\"Down\":{\"Kind\":\"key\",\"Code\":174}}",
                 "{\"Version\":1,\"Up\":{\"Kind\":\"key\",\"Code\":134},\"Down\":{\"Kind\":\"key\",\"Code\":174}}" })
                 Reject(delegate { Service.ParseMapping(json); }, "invalid mapping " + json);
-            Check(!new Trigger { Kind = "key", Code = 135 }.Valid, "F24 cannot be mapped");
+            Check(new Trigger { Kind = "key", Code = 135 }.Valid, "F24 can be detected when unused as output");
             Check(!new Trigger { Kind = null, Code = 175 }.Valid, "null trigger kind rejected");
             Check(new Trigger { Kind = "wheel", Code = -1 }.Valid, "negative wheel direction valid");
+        }
+
+        private static void CheckOutputKeys()
+        {
+            var up = new Trigger { Kind = "key", Code = 175 };
+            var down = new Trigger { Kind = "key", Code = 174 };
+            string template = "{{\"Version\":1,\"Up\":{{\"Kind\":\"key\",\"Code\":175}},\"Down\":{{\"Kind\":\"key\",\"Code\":174}},\"UpOutput\":{0},\"DownOutput\":{1}}}";
+            var custom = Service.ParseMapping(String.Format(template, 112, 135));
+            Check(custom.Target(up) == 112 && custom.Target(down) == 135, "configured F1/F24 route by direction");
+            var reversed = Service.ParseMapping(String.Format(template, 135, 134));
+            Check(reversed.Target(up) == 135 && reversed.Target(down) == 134, "swapped defaults route by direction");
+            foreach (int key in new[] { 0, -1, 111, 136, 175 })
+                Reject(delegate { Service.ParseMapping(String.Format(template, key, 135)); }, "invalid output VK " + key);
+            Reject(delegate { Service.ParseMapping(String.Format(template, 135, 135)); }, "duplicate output rejected");
+            custom.Up = new Trigger { Kind = "key", Code = 134 };
+            Check(custom.Valid && custom.Target(custom.Up) == 112, "unused F23 can be an input");
+            custom.Down = new Trigger { Kind = "key", Code = 112 };
+            Check(!custom.Valid, "input conflicts with other direction's output");
         }
 
         private static void CheckRouting()

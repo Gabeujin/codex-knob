@@ -17,6 +17,8 @@ namespace CodexKnob
         private readonly CheckBox enabled = new CheckBox(), startup = new CheckBox();
         private readonly Label state = MakeLabel(), upTitle = MakeLabel(), downTitle = MakeLabel();
         private readonly Label upSignal = MakeLabel(), downSignal = MakeLabel(), learning = MakeLabel();
+        private readonly Label upOutputLabel = MakeLabel(), downOutputLabel = MakeLabel();
+        private readonly ComboBox upOutput = new ComboBox(), downOutput = new ComboBox();
         private readonly Label installState = MakeLabel(), notice = MakeLabel(), settingsNotice = MakeLabel(), diagnostics = MakeLabel();
         private readonly RoundButton learnUp = new RoundButton(), learnDown = new RoundButton(), cancel = new RoundButton();
         private readonly RoundButton install = new RoundButton(), settings = new RoundButton(), help = new RoundButton();
@@ -35,7 +37,7 @@ namespace CodexKnob
         private TransitionOverlay transition;
         private int pageIndex;
         private Control homeFocus;
-        private bool showRequested, exiting, syncing, installedKnown, startupKnown, animating;
+        private bool showRequested, exiting, syncing, installedKnown, startupKnown, startupNeedsUpgrade, animating;
         private DateTime nextServiceRead = DateTime.MinValue;
         private string serviceNotice = "", serviceReadError = "", errorDetail = "";
         [DllImport("user32.dll")] private static extern bool SystemParametersInfo(uint action, uint parameter, out bool value, uint flags);
@@ -88,8 +90,8 @@ namespace CodexKnob
             state.SetBounds(232, 0, 340, 34); state.TextAlign = ContentAlignment.MiddleRight;
             activeRow.Controls.Add(enabled); activeRow.Controls.Add(state); pages[0].Controls.Add(activeRow);
             var mappings = new RoundPanel { Location = new Point(0, 48), Size = new Size(572, 104) };
-            mappings.Controls.Add(MappingRow(5, upTitle, upSignal, learnUp));
-            mappings.Controls.Add(MappingRow(55, downTitle, downSignal, learnDown));
+            mappings.Controls.Add(MappingRow(5, upTitle, upOutputLabel, upOutput, upSignal, learnUp));
+            mappings.Controls.Add(MappingRow(55, downTitle, downOutputLabel, downOutput, downSignal, learnDown));
             pages[0].Controls.Add(mappings);
             var learnRow = Row(156, 38); learning.SetBounds(0, 0, 476, 34); learning.Font = new Font(Font.FontFamily, 9F);
             cancel.SetBounds(488, 3, 84, 34); learnRow.Controls.Add(learning); learnRow.Controls.Add(cancel); pages[0].Controls.Add(learnRow);
@@ -122,12 +124,21 @@ namespace CodexKnob
         }
 
         private static Panel Row(int y, int height) { return new Panel { Location = new Point(0, y), Size = new Size(572, height), AutoScroll = false }; }
-        private Control MappingRow(int y, Label title, Label signal, Button button)
+        private Control MappingRow(int y, Label title, Label outputLabel, ComboBox output, Label signal, Button button)
         {
             var row = new Panel { Location = new Point(12, y), Size = new Size(548, 44), BackColor = Color.White };
             title.SetBounds(4, 1, 132, 42); title.Font = new Font(Font.FontFamily, 10F, FontStyle.Bold);
-            signal.SetBounds(136, 1, 316, 42); signal.ForeColor = Muted; button.SetBounds(464, 5, 84, 34);
-            row.Controls.Add(title); row.Controls.Add(signal); row.Controls.Add(button); return row;
+            outputLabel.SetBounds(142, 1, 84, 42); outputLabel.ForeColor = Muted;
+            output.DropDownStyle = ComboBoxStyle.DropDownList;
+            output.SetBounds(228, 9, 76, 28);
+            output.MaxDropDownItems = 10;
+            for (int key = Policy.FirstFunctionKey; key <= Policy.LastFunctionKey; key++)
+                output.Items.Add(((Keys)key).ToString());
+            signal.SetBounds(316, 1, 136, 42); signal.ForeColor = Muted;
+            signal.TextAlign = ContentAlignment.MiddleRight;
+            button.SetBounds(464, 5, 84, 34);
+            row.Controls.AddRange(new Control[] { title, outputLabel, output, signal, button });
+            return row;
         }
 
         private void BuildTray()
@@ -146,6 +157,8 @@ namespace CodexKnob
             enabled.CheckedChanged += delegate { if (!syncing) { ClearNotice(); engine.Enabled = enabled.Checked; RefreshState(); } };
             learnUp.Click += delegate { ClearNotice(); engine.BeginLearn(true); RefreshState(); cancel.Focus(); };
             learnDown.Click += delegate { ClearNotice(); engine.BeginLearn(false); RefreshState(); cancel.Focus(); };
+            upOutput.SelectionChangeCommitted += delegate { ClearNotice(); engine.SetOutput(true, Policy.FirstFunctionKey + upOutput.SelectedIndex); };
+            downOutput.SelectionChangeCommitted += delegate { ClearNotice(); engine.SetOutput(false, Policy.FirstFunctionKey + downOutput.SelectedIndex); };
             cancel.Click += delegate { ClearNotice(); engine.CancelLearn(); RefreshState(); };
             hide.Click += delegate { Hide(); }; quit.Click += delegate { Quit(); };
             settings.Click += delegate { Navigate(1, settings, false); }; help.Click += delegate { Navigate(2, help, false); };
@@ -181,6 +194,8 @@ namespace CodexKnob
             upTitle.Text = "↑  " + L.T("높이기"); downTitle.Text = "↓  " + L.T("낮추기");
             learnUp.Text = learnDown.Text = L.T("감지"); cancel.Text = L.T("취소");
             learnUp.AccessibleName = L.T("높이기 입력 감지"); learnDown.AccessibleName = L.T("낮추기 입력 감지");
+            upOutputLabel.Text = downOutputLabel.Text = L.T("출력 키");
+            upOutput.AccessibleName = L.T("높이기 출력 키"); downOutput.AccessibleName = L.T("낮추기 출력 키");
             settings.Text = L.T("설정"); help.Text = L.T("사용 안내"); hide.Text = L.T("트레이"); quit.Text = L.T("종료");
             back.Text = "← " + L.T("뒤로"); more.Text = L.T("입력 보호"); reset.Text = L.T("초기화");
             trayOpen.Text = L.T("창 열기"); trayToggle.Text = L.T("사용 / 일시 중지"); trayQuit.Text = L.T("종료");
@@ -198,6 +213,10 @@ namespace CodexKnob
             state.Text = L.T(engine.IsLearning ? "입력 대기" : !engine.Enabled ? "일시 중지" : engine.IsCodex ? "Codex 연결" : "Codex 대기");
             state.ForeColor = engine.Enabled ? Color.FromArgb(40, 100, 66) : Muted;
             upSignal.Text = L.T(engine.Settings.Up.DisplayName); downSignal.Text = L.T(engine.Settings.Down.DisplayName);
+            if (!upOutput.DroppedDown) upOutput.SelectedIndex = engine.Settings.UpOutput - Policy.FirstFunctionKey;
+            if (!downOutput.DroppedDown) downOutput.SelectedIndex = engine.Settings.DownOutput - Policy.FirstFunctionKey;
+            upOutput.Enabled = downOutput.Enabled = !engine.IsLearning;
+            helpRows[1].Text = String.Format(L.T("연결 단계 2"), (Keys)engine.Settings.UpOutput, (Keys)engine.Settings.DownOutput);
             learnUp.Enabled = learnDown.Enabled = !engine.IsLearning; cancel.Visible = engine.IsLearning;
             settings.Enabled = help.Enabled = !engine.IsLearning; header.Enabled = !engine.IsLearning && !animating;
             learning.Text = engine.IsLearning ? String.Format(L.T("노브를 돌려주세요 · {0}초"), engine.SecondsRemaining) : engine.UsesWheel ? L.T("휠 연결됨: Codex의 일반 스크롤도 바뀝니다.") : "";
@@ -217,12 +236,16 @@ namespace CodexKnob
             if (DateTime.UtcNow >= nextServiceRead)
             {
                 nextServiceRead = DateTime.UtcNow.AddSeconds(2);
-                try { bool installed = Service.IsInstalled, started = Service.StartupEnabled; installedKnown = installed; startupKnown = started; serviceReadError = ""; }
+                try
+                {
+                    bool installed = Service.IsInstalled, started = Service.StartupEnabled, upgrade = Service.StartupNeedsUpgrade;
+                    installedKnown = installed; startupKnown = started; startupNeedsUpgrade = upgrade; serviceReadError = "";
+                }
                 catch (Exception error) { serviceReadError = error.Message; }
             }
             startup.Checked = startupKnown; startup.Enabled = String.IsNullOrEmpty(serviceReadError);
-            install.Enabled = !installedKnown && String.IsNullOrEmpty(serviceReadError);
-            install.Text = L.T(installedKnown ? "설치됨" : "설치");
+            install.Enabled = (!installedKnown || startupNeedsUpgrade) && String.IsNullOrEmpty(serviceReadError);
+            install.Text = L.T(startupNeedsUpgrade ? "업데이트" : installedKnown ? "설치됨" : "설치");
             installState.Text = installedKnown ? "v" + Service.Version + " · " + L.T("설치됨") : L.T("이 컴퓨터에 설치");
         }
 

@@ -13,6 +13,15 @@ namespace CodexKnob
             { "로그인 시 자동 시작", new[] { "로그인 시 자동 시작", "Start at sign-in", "ログイン時に起動" } },
             { "높이기", new[] { "높이기", "Increase", "上げる" } },
             { "낮추기", new[] { "낮추기", "Decrease", "下げる" } },
+            { "업데이트", new[] { "업데이트", "Update", "更新" } },
+            { "출력 키", new[] { "출력 키", "Output key", "出力キー" } },
+            { "높이기 출력 키", new[] { "높이기 출력 키", "Increase output key", "上げる操作の出力キー" } },
+            { "낮추기 출력 키", new[] { "낮추기 출력 키", "Decrease output key", "下げる操作の出力キー" } },
+            { "두 방향에는 서로 다른 출력 키를 선택하세요.", new[] { "두 방향에는 서로 다른 출력 키를 선택하세요.", "Choose a different output key for each direction.", "方向ごとに異なる出力キーを選んでください。" } },
+            { "입력 신호와 겹치지 않는 출력 키를 선택하세요.", new[] { "입력 신호와 겹치지 않는 출력 키를 선택하세요.", "Choose an output key that differs from both input signals.", "入力信号と重複しない出力キーを選んでください。" } },
+            { "출력 키를 저장했습니다.", new[] { "출력 키를 저장했습니다.", "Output key saved.", "出力キーを保存しました。" } },
+            { "출력 키를 저장하지 못했습니다. 다시 시도하세요.", new[] { "출력 키를 저장하지 못했습니다. 다시 시도하세요.", "Could not save the output key. Try again.", "出力キーを保存できませんでした。もう一度お試しください。" } },
+            { "감지된 신호가 출력 키와 같습니다. 출력 키를 먼저 바꿔 주세요.", new[] { "감지된 신호가 출력 키와 같습니다. 출력 키를 먼저 바꿔 주세요.", "The detected signal matches an output key. Change the output key first.", "検出した信号が出力キーと重複しています。先に出力キーを変更してください。" } },
             { "감지", new[] { "감지", "Detect", "検出" } },
             { "취소", new[] { "취소", "Cancel", "キャンセル" } },
             { "높이기 입력 감지", new[] { "높이기 입력 감지", "Detect increase input", "上げる入力を検出" } },
@@ -94,12 +103,11 @@ namespace CodexKnob
             { "입력 보호", new[] { "입력 보호", "Input safety", "入力保護" } },
             { "기본 볼륨 입력으로 복원", new[] { "기본 볼륨 입력으로 복원", "Restore volume inputs", "既定の音量入力に戻す" } },
             { "연결 단계 1", new[] { "1. Codex 설정 → 키보드 단축키에서 ‘추론’을 검색합니다.", "1. Open Codex Settings → Keyboard shortcuts. Search for “reasoning”.", "1. Codex の設定 → キーボードショートカットで、推論を検索します。" } },
-            { "연결 단계 2", new[] { "2. 높이기에 F23, 낮추기에 F24를 저장합니다.", "2. Assign F23 to Increase reasoning effort and F24 to Decrease reasoning effort.", "2. 推論を上げる操作に F23、下げる操作に F24 を設定します。" } },
+            { "연결 단계 2", new[] { "2. Codex 단축키를 등록합니다. 높이기 {0} · 낮추기 {1}", "2. Assign {0} to Increase reasoning effort and {1} to Decrease reasoning effort.", "2. 推論を上げる操作に {0}、下げる操作に {1} を設定します。" } },
             { "연결 단계 3", new[] { "3. 기존 채팅 입력창에서 노브를 돌립니다. Codex가 앞에 있을 때만 전환합니다.", "3. Return to an existing chat composer and turn the knob. Changes apply only while Codex is in front.", "3. 既存チャットの入力欄に戻り、ノブを回します。Codex が前面にあるときだけ動作します。" } },
             { "입력 안내 1", new[] { "클릭·문자·Enter·Esc는 등록할 수 없습니다. 감지 중 Esc는 취소합니다.", "Clicks, typing, Enter and Esc cannot be assigned. Esc cancels input detection.", "クリック・文字・Enter・Esc は登録できません。検出中の Esc はキャンセルです。" } },
             { "입력 안내 2", new[] { "Ctrl·Alt·Shift·Windows 키를 누르면 전환하지 않습니다. 같은 신호를 보내는 다른 장치에도 적용됩니다.", "Holding Ctrl, Alt, Shift or Windows bypasses conversion. Other devices sending the same input are also affected.", "Ctrl・Alt・Shift・Windows キーを押している間は変換しません。同じ入力を送る他の機器にも適用されます。" } },
-            { "입력 안내 3", new[] { "휠을 등록하면 Codex의 일반 마우스 스크롤도 바뀝니다. 노브가 지원한다면 볼륨 입력을 사용하세요.", "Mapping the wheel also changes normal mouse scrolling in Codex. Use volume input if your knob supports it.", "ホイールを登録すると、Codex の通常のマウススクロールも変わります。対応するノブでは音量入力を使用してください。" } },
-            { "도움말 본문", new[] { "1. Codex 설정 → 키보드 단축키에서 ‘추론’을 검색합니다.\r\n2. 높이기에 F23, 낮추기에 F24를 저장합니다.\r\n3. 기존 채팅의 입력창에서 노브를 돌립니다.\r\n\r\nCodex가 앞에 있을 때만 전환합니다. 같은 신호를 보내는 다른 장치에도 적용됩니다.\r\n클릭·문자·Enter·Esc는 등록할 수 없습니다. 감지 중 Esc는 취소합니다.\r\nCtrl·Alt·Shift·Windows 키를 누르면 전환하지 않습니다.\r\n휠을 등록하면 Codex의 일반 마우스 스크롤도 바뀝니다.\r\n초기화는 입력을 기본 볼륨 증가·감소로 되돌립니다.", "1. In Codex Settings → Keyboard shortcuts, search for “reasoning”.\r\n2. Assign F23 to Increase reasoning effort and F24 to Decrease reasoning effort.\r\n3. Turn the knob in an existing chat composer.\r\n\r\nOnly works while Codex is in front. Other devices sending the same input are also affected.\r\nClicks, typing, Enter and Esc cannot be assigned. Esc cancels detection.\r\nHolding Ctrl, Alt, Shift or Windows bypasses conversion.\r\nMapping the wheel also changes normal mouse scrolling in Codex.\r\nReset restores the default volume up/down inputs.", "1. Codex の設定 → キーボードショートカットで推論を検索します。\r\n2. 推論を上げる操作に F23、下げる操作に F24 を設定します。\r\n3. 既存チャットの入力欄でノブを回します。\r\n\r\nCodex が前面にあるときだけ動作します。同じ入力を送る他の機器にも適用されます。\r\nクリック・文字・Enter・Esc は登録できません。検出中の Esc はキャンセルです。\r\nCtrl・Alt・Shift・Windows キーを押している間は変換しません。\r\nホイールを登録すると、Codex の通常のマウススクロールも変わります。\r\n初期化すると、既定の音量アップ・ダウンの入力に戻ります。" } }
+            { "입력 안내 3", new[] { "휠을 등록하면 Codex의 일반 마우스 스크롤도 바뀝니다. 노브가 지원한다면 볼륨 입력을 사용하세요.", "Mapping the wheel also changes normal mouse scrolling in Codex. Use volume input if your knob supports it.", "ホイールを登録すると、Codex の通常のマウススクロールも変わります。対応するノブでは音量入力を使用してください。" } }
         };
         internal static void Set(string code) { Code = code == "en" || code == "ja" ? code : "ko"; }
         internal static string T(string key)

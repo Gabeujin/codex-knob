@@ -31,16 +31,34 @@ namespace CodexKnob
         public int Version { get; set; }
         public Trigger Up { get; set; }
         public Trigger Down { get; set; }
+        public int UpOutput { get; set; }
+        public int DownOutput { get; set; }
+        public Mapping() { UpOutput = 0x86; DownOutput = 0x87; }
         public static Mapping Default { get { return new Mapping { Version = 1, Up = new Trigger { Kind = "key", Code = 175 }, Down = new Trigger { Kind = "key", Code = 174 } }; } }
-        public bool Valid { get { return Version == 1 && Up != null && Down != null && Up.Valid && Down.Valid && !Up.Same(Down); } }
-        public int Target(Trigger trigger) { return Up.Same(trigger) ? 0x86 : Down.Same(trigger) ? 0x87 : 0; }
+        public bool Valid
+        {
+            get
+            {
+                return Version == 1 && Up != null && Down != null && Up.Valid && Down.Valid && !Up.Same(Down)
+                    && Policy.IsFunctionKey(UpOutput) && Policy.IsFunctionKey(DownOutput) && UpOutput != DownOutput
+                    && !UsesInputKey(UpOutput) && !UsesInputKey(DownOutput);
+            }
+        }
+        public int Target(Trigger trigger) { return Up.Same(trigger) ? UpOutput : Down.Same(trigger) ? DownOutput : 0; }
+        internal bool UsesInputKey(int key)
+        {
+            return (Up.Kind == "key" && Up.Code == key) || (Down.Kind == "key" && Down.Code == key);
+        }
+        internal Mapping Copy() { return (Mapping)MemberwiseClone(); }
     }
 
     internal static class Policy
     {
+        internal const int FirstFunctionKey = 0x70, LastFunctionKey = 0x87;
+        internal static bool IsFunctionKey(int key) { return key >= FirstFunctionKey && key <= LastFunctionKey; }
         internal static bool LearnableKey(int key)
         {
-            return (key >= 0x70 && key <= 0x85) || (key >= 0x21 && key <= 0x28) || (key >= 0xAD && key <= 0xB3);
+            return IsFunctionKey(key) || (key >= 0x21 && key <= 0x28) || (key >= 0xAD && key <= 0xB3);
         }
         internal static bool IsCodexPath(string path)
         {
@@ -167,17 +185,39 @@ namespace CodexKnob
         public void CancelLearn()
         { if (learning) { learning = false; Notice = "신호 감지를 취소했습니다."; } wheel.Reset(); }
         public void ResetMapping()
-        { CancelLearn(); Save(Mapping.Default, "기본 볼륨 신호로 되돌렸습니다."); }
+        {
+            CancelLearn();
+            var defaults = Mapping.Default;
+            defaults.UpOutput = Settings.UpOutput;
+            defaults.DownOutput = Settings.DownOutput;
+            Save(defaults, "기본 볼륨 신호로 되돌렸습니다.");
+        }
+
+        public void SetOutput(bool increase, int key)
+        {
+            if (learning || pending) return;
+            var candidate = Settings.Copy();
+            if (increase) candidate.UpOutput = key; else candidate.DownOutput = key;
+            if (!Policy.IsFunctionKey(key)) return;
+            if (candidate.UpOutput == candidate.DownOutput) Notice = "두 방향에는 서로 다른 출력 키를 선택하세요.";
+            else if (candidate.UsesInputKey(key)) Notice = "입력 신호와 겹치지 않는 출력 키를 선택하세요.";
+            else
+            {
+                Save(candidate, "출력 키를 저장했습니다.", "출력 키를 저장하지 못했습니다. 다시 시도하세요.");
+                return;
+            }
+            changed();
+        }
         public void Tick()
         {
             if (learning && (DateTime.UtcNow >= deadline || Native.GetForegroundWindow() != owner))
             { learning = false; Notice = "신호 감지가 끝났습니다. 이 창에서 다시 시도하세요."; }
             if (!Enabled || !IsCodex || Native.ModifiersHeld()) wheel.Reset();
         }
-        private void Save(Mapping mapping, string message)
+        private void Save(Mapping mapping, string message, string failure = "신호를 저장하지 못했습니다. 다시 시도하세요.")
         {
             try { Service.SaveMapping(mapping); Settings = mapping; Notice = message; wheel.Reset(); }
-            catch (Exception) { Notice = "신호를 저장하지 못했습니다. 다시 시도하세요."; }
+            catch (Exception) { Notice = failure; }
             changed();
         }
         private bool Capture(Trigger trigger)
@@ -189,8 +229,12 @@ namespace CodexKnob
             dispatch(delegate
             {
                 pending = false;
-                var candidate = new Mapping { Version = 1, Up = increase ? trigger : Settings.Up, Down = increase ? Settings.Down : trigger };
-                if (!candidate.Valid) { Notice = "두 방향에 같은 신호를 등록할 수 없습니다."; changed(); return; }
+                var candidate = Settings.Copy();
+                if (increase) candidate.Up = trigger; else candidate.Down = trigger;
+                if (candidate.Up.Same(candidate.Down))
+                { Notice = "두 방향에 같은 신호를 등록할 수 없습니다."; changed(); return; }
+                if (candidate.UsesInputKey(candidate.UpOutput) || candidate.UsesInputKey(candidate.DownOutput))
+                { Notice = "감지된 신호가 출력 키와 같습니다. 출력 키를 먼저 바꿔 주세요."; changed(); return; }
                 Save(candidate, "신호를 등록했습니다.");
             });
             return true;
@@ -208,9 +252,9 @@ namespace CodexKnob
         }
         private void Observe(Trigger trigger)
         {
-            int target = Settings.Target(trigger);
-            if (target == 0) return;
-            if (target == 0x86) UpCount++; else DownCount++;
+            if (Settings.Up.Same(trigger)) UpCount++;
+            else if (Settings.Down.Same(trigger)) DownCount++;
+            else return;
             LastSignal = trigger.DisplayName;
         }
         private IntPtr OnKey(int code, IntPtr message, IntPtr data)
