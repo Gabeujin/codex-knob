@@ -127,14 +127,14 @@ namespace CodexKnob
         private Control MappingRow(int y, Label title, Label outputLabel, ComboBox output, Label signal, Button button)
         {
             var row = new Panel { Location = new Point(12, y), Size = new Size(548, 44), BackColor = Color.White };
-            title.SetBounds(4, 1, 132, 42); title.Font = new Font(Font.FontFamily, 10F, FontStyle.Bold);
-            outputLabel.SetBounds(142, 1, 84, 42); outputLabel.ForeColor = Muted;
+            title.SetBounds(4, 1, 124, 42); title.Font = new Font(Font.FontFamily, 10F, FontStyle.Bold);
+            outputLabel.SetBounds(132, 1, 84, 42); outputLabel.ForeColor = Muted;
             output.DropDownStyle = ComboBoxStyle.DropDownList;
-            output.SetBounds(228, 9, 76, 28);
-            output.MaxDropDownItems = 10;
+            output.SetBounds(218, 9, 70, 28);
+            output.DropDownHeight = 166;
             for (int key = Policy.FirstFunctionKey; key <= Policy.LastFunctionKey; key++)
                 output.Items.Add(((Keys)key).ToString());
-            signal.SetBounds(316, 1, 136, 42); signal.ForeColor = Muted;
+            signal.SetBounds(298, 1, 156, 42); signal.ForeColor = Muted;
             signal.TextAlign = ContentAlignment.MiddleRight;
             button.SetBounds(464, 5, 84, 34);
             row.Controls.AddRange(new Control[] { title, outputLabel, output, signal, button });
@@ -212,7 +212,8 @@ namespace CodexKnob
             try { enabled.Checked = engine.Enabled; RefreshServiceState(); } finally { syncing = false; }
             state.Text = L.T(engine.IsLearning ? "입력 대기" : !engine.Enabled ? "일시 중지" : engine.IsCodex ? "Codex 연결" : "Codex 대기");
             state.ForeColor = engine.Enabled ? Color.FromArgb(40, 100, 66) : Muted;
-            upSignal.Text = L.T(engine.Settings.Up.DisplayName); downSignal.Text = L.T(engine.Settings.Down.DisplayName);
+            ShowSignal(upSignal, engine.Settings.Up);
+            ShowSignal(downSignal, engine.Settings.Down);
             if (!upOutput.DroppedDown) upOutput.SelectedIndex = engine.Settings.UpOutput - Policy.FirstFunctionKey;
             if (!downOutput.DroppedDown) downOutput.SelectedIndex = engine.Settings.DownOutput - Policy.FirstFunctionKey;
             upOutput.Enabled = downOutput.Enabled = !engine.IsLearning;
@@ -228,6 +229,12 @@ namespace CodexKnob
             notice.ForeColor = settingsNotice.ForeColor = String.IsNullOrEmpty(detail) ? Muted : Color.FromArgb(154, 54, 40);
             diagnostics.Text = String.Format(L.T("감지: 높이기 {0} / 낮추기 {1} · 전송 {2}"), engine.UpCount, engine.DownCount, engine.SentCount) + Environment.NewLine + L.T("최근 신호: ") + L.T(engine.LastSignal) + Environment.NewLine + L.T("전송 횟수는 추론 변경 성공을 뜻하지 않습니다.");
             tray.Text = "Codex Knob · " + L.T(engine.Enabled ? "사용 중" : "일시 중지");
+        }
+
+        private static void ShowSignal(Label label, Trigger trigger)
+        {
+            string code = trigger.SignalCode;
+            label.Text = L.T(trigger.DisplayName) + (code.Length == 0 ? "" : Environment.NewLine + code);
         }
 
         private void RefreshServiceState()

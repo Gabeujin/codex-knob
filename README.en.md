@@ -1,24 +1,35 @@
 # Codex Knob
 
-Turn a keyboard knob to adjust reasoning effort in Codex on Windows. Input is remapped only while the Microsoft Store version of Codex is in the foreground.
+Turn a keyboard knob to adjust reasoning effort in Codex on Windows. Input is remapped while the Microsoft Store version of Codex is in the foreground.
 
 [한국어](README.md) · English
 
-## Get started
+## Install
 
-1. Download the Windows ZIP from the [latest release](../../releases/latest), extract it, and run `CodexKnob.exe`. If an older version is running, choose **Quit** from its tray menu first.
-2. If your knob sends something other than volume up/down, click **Detect** for each direction and turn the knob one notch within eight seconds. The saved signal appears beside the button.
-3. Select an **Output key** for each direction. The defaults are **F23** for Increase and **F24** for Decrease. Pick unused keys if a Stream Deck or another device already uses function keys. If a detected signal matches an output key, change the output first and detect again.
-4. In Codex, open **Settings → Keyboard shortcuts** and search for **reasoning**. Start recording each shortcut, turn the knob one notch in the corresponding direction, and save. Try both directions in the chat composer.
+[Download Setup for Windows x64](https://github.com/Gabeujin/codex-knob/releases/download/v1.2.0/Codex-Knob-1.2.0-Setup-x64.exe)
 
-Use **Settings** to install the app and optionally start it in the tray at Windows sign-in. If you enabled startup in v1.1.0, use **Settings → Update** in the new version.
+1. If Codex Knob is running, choose **Quit** from the tray menu.
+2. Run Setup. If .NET Framework 4.8 or later is missing, Setup downloads the Microsoft runtime and asks for administrator permission. If Windows needs to restart, run Setup again after restarting.
+3. Open **Codex Knob** from the Start menu. If you enabled startup in v1.1.0, use **Settings → Update** in the app to move the startup entry.
 
-- Requires Windows x64 and .NET Framework 4.x. The interface supports Korean, English, and Japanese.
-- Output keys range from F1 through F24. Pick different output keys and keep them distinct from the learned input signals.
-- Supported inputs include volume and media keys, function and navigation keys, and the vertical wheel. Devices that send the same signal are treated alike. Mapping the wheel also changes ordinary mouse scrolling in Codex.
+## 1. Detect the knob signal
+
+Click **Detect** for each direction and turn the knob one notch within eight seconds. Beside the button, the app shows the saved input name and the signal received by Windows. Keyboard inputs show the virtual key (`VK`) and scan code (`SC`). Wheel inputs show the movement delta (`Δ`). Detect a previously saved key again to record its scan code.
+
+![Detecting a media key and seeing its Windows signal codes](docs/media/detect-signal.gif)
+
+## 2. Set output keys and connect Codex
+
+1. Choose an **Output key** from F1 through F24 for each direction. The defaults are **F23** for Increase and **F24** for Decrease. Choose keys that are free on your other devices and distinct from the knob inputs.
+2. Open **Guide** in Codex Knob to see your selected keys.
+3. In Codex **Settings → Keyboard shortcuts**, search for **reasoning**. Start recording each shortcut, turn the knob one notch in the corresponding direction, and save. Try both directions in the chat composer.
+
+![Changing the Increase output to F19 and checking the guide](docs/media/select-output.gif)
+
+The GIFs show the running app with simulated Windows input. Devices sending the same input are treated alike. Mapping the wheel also changes ordinary mouse scrolling in Codex.
 
 ## Build from source
 
-Run `./build.ps1` in Windows PowerShell. Run self-tests with `Start-Process ./CodexKnob.exe -ArgumentList '--self-test' -Wait -PassThru`. Exit code `0` indicates success.
+Run `./build.ps1` in Windows PowerShell. Build Setup with Inno Setup 6.7 using `ISCC.exe .\installer\CodexKnob.iss`.
 
 [MIT License](LICENSE) · Independent project

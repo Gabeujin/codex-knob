@@ -14,6 +14,7 @@ namespace CodexKnob
             CheckLearnableKeys();
             CheckMappings();
             CheckOutputKeys();
+            CheckSignalCodes();
             CheckRouting();
             CheckPaths();
             CheckKeySequences();
@@ -95,6 +96,20 @@ namespace CodexKnob
             Check(custom.Valid && custom.Target(custom.Up) == 112, "unused F23 can be an input");
             custom.Down = new Trigger { Kind = "key", Code = 112 };
             Check(!custom.Valid, "input conflicts with other direction's output");
+        }
+
+        private static void CheckSignalCodes()
+        {
+            Check(Mapping.Default.Up.SignalCode == "VK 0xAF", "legacy key shows only known VK");
+            var captured = new Trigger { Kind = "key", Code = 175, ScanCode = 48, Extended = true };
+            Check(captured.SignalCode == "VK 0xAF · SC 0xE030", "extended scan code displayed");
+            Check(captured.Same(Mapping.Default.Up), "signal details do not affect routing");
+            var wheel = new Trigger { Kind = "wheel", Code = -1, WheelDelta = -240 };
+            Check(wheel.SignalCode == "Δ -240", "signed raw wheel delta displayed");
+            Check(new Trigger { Kind = "wheel", Code = 1 }.SignalCode == "", "legacy wheel does not invent a delta");
+            const string json = "{\"Version\":1,\"Up\":{\"Kind\":\"key\",\"Code\":175,\"ScanCode\":48,\"Extended\":true},\"Down\":{\"Kind\":\"wheel\",\"Code\":-1,\"WheelDelta\":-240}}";
+            var stored = Service.ParseMapping(json);
+            Check(stored.Up.SignalCode == captured.SignalCode && stored.Down.SignalCode == wheel.SignalCode, "stored signal details restored");
         }
 
         private static void CheckRouting()

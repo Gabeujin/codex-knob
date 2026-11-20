@@ -11,6 +11,9 @@ namespace CodexKnob
     {
         public string Kind { get; set; }
         public int Code { get; set; }
+        public uint? ScanCode { get; set; }
+        public bool Extended { get; set; }
+        public int? WheelDelta { get; set; }
         public bool Valid { get { return Kind == "key" ? Policy.LearnableKey(Code) : Kind == "wheel" && (Code == 1 || Code == -1); } }
         public string DisplayName
         {
@@ -21,6 +24,17 @@ namespace CodexKnob
                 if (Code == 0xAE) return "볼륨 감소";
                 if (Code == 0xAD) return "음소거";
                 return ((Keys)Code).ToString();
+            }
+        }
+        internal string SignalCode
+        {
+            get
+            {
+                if (Kind == "wheel")
+                    return WheelDelta.HasValue ? "Δ " + WheelDelta.Value.ToString("+0;-0;0", System.Globalization.CultureInfo.InvariantCulture) : "";
+                string virtualKey = "VK 0x" + Code.ToString("X2");
+                if (!ScanCode.HasValue) return virtualKey;
+                return virtualKey + " · SC 0x" + (Extended ? "E0" : "") + ScanCode.Value.ToString("X2");
             }
         }
         public bool Same(Trigger other) { return other != null && Kind == other.Kind && Code == other.Code; }
@@ -268,7 +282,7 @@ namespace CodexKnob
             bool up = message.ToInt64() == 0x101 || message.ToInt64() == 0x105;
             // 실제 키별 상태를 유지해 학습과 매핑 변경 이후에도 해제 이벤트를 보존
             if (sequences[key] == null) sequences[key] = new KeySequence();
-            var trigger = new Trigger { Kind = "key", Code = key };
+            var trigger = new Trigger { Kind = "key", Code = key, ScanCode = input.scan, Extended = (input.flags & 1) != 0 };
             int target = 0;
             Func<int, bool> send = Send;
             if (down && learning && Native.GetForegroundWindow() == owner)
@@ -289,7 +303,7 @@ namespace CodexKnob
             if (input.extra == Native.Marker || (input.flags & 2) != 0) return Native.CallNextHookEx(mouseHook, code, message, data);
             int delta = (short)(input.mouseData >> 16);
             if (delta == 0) return Native.CallNextHookEx(mouseHook, code, message, data);
-            var trigger = new Trigger { Kind = "wheel", Code = Math.Sign(delta) };
+            var trigger = new Trigger { Kind = "wheel", Code = Math.Sign(delta), WheelDelta = delta };
             if (learning && !Native.ModifiersHeld() && Capture(trigger)) return new IntPtr(1);
             int target = Target(trigger, input.flags);
             if (target == 0) { wheel.Reset(); return Native.CallNextHookEx(mouseHook, code, message, data); }

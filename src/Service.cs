@@ -127,8 +127,8 @@ namespace CodexKnob
             string json = new JavaScriptSerializer().Serialize(new
             {
                 mapping.Version,
-                Up = new { mapping.Up.Kind, mapping.Up.Code },
-                Down = new { mapping.Down.Kind, mapping.Down.Code },
+                Up = new { mapping.Up.Kind, mapping.Up.Code, mapping.Up.ScanCode, mapping.Up.Extended, mapping.Up.WheelDelta },
+                Down = new { mapping.Down.Kind, mapping.Down.Code, mapping.Down.ScanCode, mapping.Down.Extended, mapping.Down.WheelDelta },
                 mapping.UpOutput,
                 mapping.DownOutput
             });
